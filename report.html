@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Loading Overlay */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -23,35 +22,47 @@
             color: white;
             font-size: 1.5rem;
         }
+        .report-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div id="loading-overlay" style="display: none;">
-        <div class="spinner-border text-light" role="status">
-            <span class="visually-hidden">Loading...</span>
+        <div class="text-center">
+            <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 mb-0">Generating AI Insights...</p>
+            <p class="text-white-50 small">This may take up to a minute.</p>
         </div>
-        <span class="ms-3">Generating Report... Please wait.</span>
     </div>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Eli Intelligence Report</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/report/{{ campaign_id }}/generate" id="generate-report-btn">Generate New Report</a>
-                    </li>
-                     <li class="nav-item">
-                        <button class="nav-link btn btn-link" id="view-sample-btn">View Sample Report</button>
+                        <button class="btn btn-link nav-link" id="generate-report-btn">Generate AI Report</button>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="savedReportsDropdown" role="button" data-bs-toggle="dropdown">
+                            Load Saved Report
+                        </a>
+                        <ul class="dropdown-menu" id="saved-reports-list">
+                            <li><span class="dropdown-item-text text-muted">Loading...</span></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             Report Sections
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="#engagement-summary">1. Emoji Engagement Summary</a></li>
                             <li><a class="dropdown-item" href="#one-big-thing">2. One Big Thing</a></li>
                             <li><a class="dropdown-item" href="#issue-breakdown">3. Issue Selection Breakdown</a></li>
@@ -64,261 +75,330 @@
                         </ul>
                     </li>
                 </ul>
+                <a href="/campaigns" class="btn btn-info me-2">View Admin Panel</a>
                 <button class="btn btn-secondary me-2" id="test-api-btn">Test API</button>
-                <button class="btn btn-outline-light" id="export-pdf-btn">Export to PDF</button>
+                <button class="btn btn-outline-light" id="export-pdf-btn" disabled>Export to PDF</button>
             </div>
         </div>
     </nav>
 
-    <div id="report-content" {% if sample_view %}style="display: none;"{% endif %}>
-        <div class="container my-5">
-            <header class="report-header text-center p-4 rounded mb-5">
-                <h1>Eli Intelligence Report: New York State Issue Pulse</h1>
-                <p class="lead"><strong>Client:</strong> Senator [Redacted for Sample] | <strong>Campaign Date:</strong> June 2025 | <strong>Audience:</strong> New York Constituents</p>
-                <p class="text-white-50">Powered by: Eli Works</p>
-            </header>
-
-            <main>
-                <section id="engagement-summary" class="mb-5 report-section">
-                    <h3>1. Emoji Engagement Summary</h3>
-                    <div class="card"><div class="card-body">
-                        <p>{{ engagement_summary | default('AI analysis will appear here.', true) | safe }}</p>
-                    </div></div>
-                </section>
-                
-                <section id="one-big-thing" class="mb-5 report-section">
-                    <h3>2. One Big Thing</h3>
-                    <div class="card"><div class="card-body">
-                        <p>{{ one_big_thing | default('AI analysis will appear here.', true) | safe }}</p>
-                    </div></div>
-                </section>
-
-                <section id="issue-breakdown" class="mb-5 report-section">
-                    <h3>3. Issue Selection Breakdown</h3>
-                    <div class="card"><div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <table class="table">
-                                    <thead><tr><th>Issue</th><th>% of Clicks</th></tr></thead>
-                                    <tbody>
-                                        {% if issue_breakdown %}
-                                            {% for item in issue_breakdown %}
-                                            <tr><td>{{ item.topic }}</td><td>{{ item.percentage }}%</td></tr>
-                                            {% endfor %}
-                                        {% else %}
-                                            <tr><td colspan="2">No data available.</td></tr>
-                                        {% endif %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="col-md-4">
-                                <canvas id="issuePieChart"></canvas>
-                            </div>
-                        </div>
-                    </div></div>
-                </section>
-
-                <section id="emotional-landscape" class="mb-5 report-section">
-                    <h3>4. Emotional Landscape</h3>
-                    <div class="card"><div class="card-body">
-                        <p>{{ emotional_landscape | default('AI analysis will appear here.', true) | safe }}</p>
-                    </div></div>
-                </section>
-
-                <section id="strategic-insights" class="mb-5 report-section">
-                    <h3>5. Strategic Insights for the Senator</h3>
-                    <div class="card"><div class="card-body">
-                        <p>{{ strategic_insights | default('AI analysis will appear here.', true) | safe }}</p>
-                    </div></div>
-                </section>
-                
-                <section id="social-media" class="mb-5 report-section">
-                    <h3>6. Social Media Messaging</h3>
-                    <div class="card"><div class="card-body">
-                        {{ social_media_messaging | default('AI analysis will appear here.', true) | safe }}
-                    </div></div>
-                </section>
-
-                <section id="town-hall" class="mb-5 report-section">
-                    <h3>7. Voter Town Hall Meeting Messaging</h3>
-                    <div class="card"><div class="card-body">
-                        {{ town_hall_messaging | default('AI analysis will appear here.', true) | safe }}
-                    </div></div>
-                </section>
-                
-                <section id="press-release" class="mb-5 report-section">
-                    <h3>8. Press Release</h3>
-                    <div class="card"><div class="card-body">
-                        {{ press_release | default('AI analysis will appear here.', true) | safe }}
-                    </div></div>
-                </section>
-                
-                <section id="social-evaluation" class="mb-5 report-section">
-                    <h3>9. Social Posts Evaluation</h3>
-                    <div class="card"><div class="card-body">
-                       {{ social_posts_evaluation | default('AI analysis will appear here.', true) | safe }}
-                    </div></div>
-                </section>
-            </main>
-        </div>
-    </div>
-
-    <div id="sample-report-content" {% if not sample_view %}style="display: none;"{% endif %}>
-        <div class="container my-5">
-             <header class="report-header text-center p-4 rounded mb-5">
-                <h1>SAMPLE REPORT: Eli Intelligence Report</h1>
-                <p class="lead">This is a sample report demonstrating the structure and type of analysis provided.</p>
-            </header>
-            <main>
-                <section class="mb-5 report-section">
-                    <h3>1. Emoji Engagement Summary</h3>
-                    <div class="card"><div class="card-body"><p>Sample engagement summary text. Analysis of user emoji choices would appear here.</p></div></div>
-                </section>
-                <section class="mb-5 report-section">
-                    <h3>2. One Big Thing</h3>
-                    <div class="card"><div class="card-body"><p>This section highlights the single most important insight from the collected data. For example: "The primary concern for constituents is the rising cost of living."</p></div></div>
-                </section>
-                <section class="mb-5 report-section">
-                    <h3>3. Issue Selection Breakdown</h3>
-                     <div class="card"><div class="card-body"><p>A chart and table would show the distribution of selected topics, e.g., 45% Economy, 25% Healthcare, etc.</p></div></div>
-                </section>
-                 <section class="mb-5 report-section">
-                    <h3>4. Emotional Landscape</h3>
-                    <div class="card"><div class="card-body"><p>Analysis of the emotions expressed in user feedback. E.g., "A sentiment of anxiety was prevalent in discussions about the economy."</p></div></div>
-                </section>
-                <section class="mb-5 report-section">
-                    <h3>5. Strategic Insights for the Senator</h3>
-                    <div class="card"><div class="card-body"><p>Actionable advice based on the data. E.g., "Recommend focusing Q3 campaign messaging on the new jobs bill."</p></div></div>
-                </section>
-                <section class="mb-5 report-section">
-                    <h3>6. Social Media Messaging</h3>
-                    <div class="card"><div class="card-body"><p>Sample social media posts derived from the analysis would be here.</p></div></div>
-                </section>
-                 <section class="mb-5 report-section">
-                    <h3>7. Voter Town Hall Meeting Messaging</h3>
-                    <div class="card"><div class="card-body"><p>Key talking points for town hall meetings based on constituent feedback.</p></div></div>
-                </section>
-                <section class="mb-5 report-section">
-                    <h3>8. Press Release</h3>
-                    <div class="card"><div class="card-body"><p>A draft press release addressing the key issues identified.</p></div></div>
-                </section>
-                <section class="mb-5 report-section">
-                    <h3>9. Social Posts Evaluation</h3>
-                    <div class="card"><div class="card-body"><p>Evaluation of hypothetical social media posts based on the data analysis.</p></div></div>
-                </section>
-            </main>
-        </div>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Intelligence Report: {{ campaign_name }}</h2>
-        <div>
-            <button id="save-report-btn" class="btn btn-success me-2">Save Report</button>
-            <button id="test-api-btn" class="btn btn-secondary me-2">Test API</button>
-            <button class="btn btn-primary" onclick="window.print()">Export to PDF</button>
-        </div>
+    <div id="report-container">
+        <!-- Report content will be loaded here -->
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const reportContent = document.getElementById('report-content');
-        const sampleReportContent = document.getElementById('sample-report-content');
-        const viewSampleBtn = document.getElementById('view-sample-btn');
-        const generateReportBtn = document.getElementById('generate-report-btn');
+    document.addEventListener('DOMContentLoaded', function () {
+        const campaignId = {{ campaign_id }};
+        const campaignName = "{{ campaign_name }}";
         const loadingOverlay = document.getElementById('loading-overlay');
-        const sampleReport = document.getElementById('sample-report');
-        const generatedReport = document.getElementById('generated-report');
-        const saveReportBtn = document.getElementById('save-report-btn');
+        const reportContainer = document.getElementById('report-container');
+        const testApiBtn = document.getElementById('test-api-btn');
+        const exportPdfBtn = document.getElementById('export-pdf-btn');
+        const generateReportBtn = document.getElementById('generate-report-btn');
 
-        const isSampleView = {{ sample_view | tojson }};
+        // Load submissions by default
+        loadSubmissions();
+        loadSavedReportsList();
 
-        function showSampleReport() {
-            reportContent.style.display = 'none';
-            sampleReportContent.style.display = 'block';
-            viewSampleBtn.classList.add('active');
-            generateReportBtn.classList.remove('active');
-        }
+        function loadSubmissions() {
+            reportContainer.innerHTML = `
+                <div class="container my-5">
+                    <header class="text-center mb-5">
+                        <h1>Campaign Submissions: ${campaignName}</h1>
+                        <p class="lead">Review the collected responses before generating the AI report</p>
+                    </header>
+                    <div id="submissions-content">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading submissions...</span>
+                            </div>
+                            <p class="mt-2">Loading submissions...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
 
-        function showGeneratedReport() {
-            reportContent.style.display = 'block';
-            sampleReportContent.style.display = 'none';
-            viewSampleBtn.classList.remove('active');
-            generateReportBtn.classList.add('active');
-        }
-
-        viewSampleBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            showSampleReport();
-        });
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const generateBtn = document.getElementById('generate-report-btn');
-            const loadingOverlay = document.getElementById('loading-overlay');
-            const sampleReport = document.getElementById('sample-report');
-            const generatedReport = document.getElementById('generated-report');
-            const viewSampleBtn = document.getElementById('view-sample-btn');
-
-            if (generateBtn) {
-                generateBtn.addEventListener('click', function (e) {
-                    // Show overlay and let the link navigation proceed.
-                    // The overlay will disappear when the new page loads.
-                    loadingOverlay.style.display = 'flex';
+            // Fetch submissions data
+            fetch(`/campaigns/data/${campaignId}`)
+                .then(response => response.json())
+                .then(data => {
+                    renderSubmissions(data.conversations || []);
+                })
+                .catch(error => {
+                    console.error('Error loading submissions:', error);
+                    document.getElementById('submissions-content').innerHTML = `
+                        <div class="alert alert-warning text-center">
+                            <h4>No submissions found</h4>
+                            <p>There are no conversation submissions for this campaign yet.</p>
+                        </div>
+                    `;
                 });
-            }
+        }
+
+        function renderSubmissions(conversations) {
+            const submissionsContent = document.getElementById('submissions-content');
             
-            if (isSampleView) {
-                sampleReport.style.display = 'block';
-                generatedReport.style.display = 'none';
-            } else {
-                sampleReport.style.display = 'none';
-                generatedReport.style.display = 'block';
+            if (conversations.length === 0) {
+                submissionsContent.innerHTML = `
+                    <div class="alert alert-info text-center">
+                        <h4>No Submissions Yet</h4>
+                        <p>No conversation data has been collected for this campaign.</p>
+                    </div>
+                `;
+                return;
             }
-            
-            viewSampleBtn.addEventListener('click', () => {
-                sampleReport.style.display = 'block';
-                generatedReport.style.display = 'none';
+
+            let submissionsHTML = `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h3>${conversations.length}</h3>
+                                <p class="mb-0">Total Conversations</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3>${new Set(conversations.map(c => c.initial_topic)).size}</h3>
+                                <p class="mb-0">Unique Topics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <h3>Conversation Details</h3>
+            `;
+
+            conversations.forEach((conv, index) => {
+                const conversation = JSON.parse(conv.conversation_json);
+                submissionsHTML += `
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>Conversation ${index + 1}</strong> - 
+                            Initial Topic: <span class="badge bg-primary">${conv.initial_topic}</span> - 
+                            <small class="text-muted">${new Date(conv.timestamp).toLocaleString()}</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="conversation-log">
+                `;
+                
+                conversation.forEach(message => {
+                    const isUser = message.from === 'user';
+                    submissionsHTML += `
+                        <div class="mb-2 ${isUser ? 'text-end' : 'text-start'}">
+                            <span class="badge ${isUser ? 'bg-secondary' : 'bg-primary'} mb-1">
+                                ${isUser ? 'User' : 'Eli'}
+                            </span>
+                            <div class="p-2 rounded ${isUser ? 'bg-light text-dark' : 'bg-primary text-white'} d-inline-block" style="max-width: 70%;">
+                                ${message.text}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                submissionsHTML += `
+                            </div>
+                        </div>
+                    </div>
+                `;
             });
 
-            const ctx = document.getElementById('issuePieChart').getContext('2d');
-            const issueLabels = {{ issue_labels | tojson }};
-            const issueData = {{ issue_data | tojson }};
+            submissionsContent.innerHTML = submissionsHTML;
+        }
 
-            if (issueLabels && issueData && issueLabels.length > 0) {
-                new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: issueLabels,
-                        datasets: [{
-                            label: '% of Clicks',
-                            data: issueData,
-                            backgroundColor: [
-                                'rgba(54, 162, 235, 0.8)',
-                                'rgba(75, 192, 192, 0.8)',
-                                'rgba(255, 206, 86, 0.8)',
-                                'rgba(201, 203, 207, 0.8)',
-                                'rgba(255, 99, 132, 0.8)'
-                            ],
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                            }
-                        }
+        function loadSavedReportsList() {
+            fetch(`/api/campaigns/${campaignId}/reports`)
+                .then(response => response.json())
+                .then(data => {
+                    const savedReportsList = document.getElementById('saved-reports-list');
+                    if (data.reports && data.reports.length > 0) {
+                        savedReportsList.innerHTML = data.reports.map(report => `
+                            <li><a class="dropdown-item saved-report-item" href="#" data-report-id="${report.id}">
+                                ${report.name} <br>
+                                <small class="text-muted">${new Date(report.created_at).toLocaleDateString()}</small>
+                            </a></li>
+                        `).join('');
+                        
+                        // Add click event listeners to saved report items
+                        document.querySelectorAll('.saved-report-item').forEach(item => {
+                            item.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const reportId = e.target.closest('.saved-report-item').dataset.reportId;
+                                loadSavedReport(reportId);
+                            });
+                        });
+                    } else {
+                        savedReportsList.innerHTML = '<li><span class="dropdown-item-text text-muted">No saved reports</span></li>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading saved reports:', error);
+                    document.getElementById('saved-reports-list').innerHTML = '<li><span class="dropdown-item-text text-muted">Error loading reports</span></li>';
+                });
+        }
+
+        function loadSavedReport(reportId) {
+            loadingOverlay.style.display = 'flex';
+            
+            fetch(`/api/reports/${reportId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    displaySavedReport(data);
+                })
+                .catch(error => {
+                    console.error('Error loading saved report:', error);
+                    reportContainer.innerHTML = `
+                        <div class="container my-5">
+                            <div class="alert alert-danger text-center">
+                                <h3>Failed to Load Saved Report</h3>
+                                <p>${error.message}</p>
+                                <button class="btn btn-secondary" onclick="location.reload()">Back to Submissions</button>
+                            </div>
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    loadingOverlay.style.display = 'none';
+                });
+        }
+
+        function displaySavedReport(reportData) {
+            exportPdfBtn.disabled = false;
+            
+            reportContainer.innerHTML = `
+                <div class="container my-5">
+                    <div class="alert alert-info mb-4">
+                        <strong>📄 Saved Report:</strong> ${reportData.name} 
+                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="location.reload()">Back to Submissions</button>
+                    </div>
+                    <div id="saved-report-content">
+                        ${reportData.html_content}
+                    </div>
+                    <div class="text-center mt-4">
+                        <button class="btn btn-primary me-2" onclick="window.print()">Print Report</button>
+                        <button class="btn btn-secondary" onclick="location.reload()">Back to Submissions</button>
+                    </div>
+                </div>
+            `;
+            
+            // Check if there's a pie chart in the loaded report and re-render it if needed
+            const pieChartCanvas = document.getElementById('issuePieChart');
+            if (pieChartCanvas) {
+                // Try to find issue breakdown data in the report content and re-render chart
+                tryToRenderSavedPieChart();
+            }
+        }
+
+        function tryToRenderSavedPieChart() {
+            // This is a basic attempt to re-render charts in saved reports
+            // Since saved reports contain static HTML, we'd need to extract data from tables
+            const issueTable = document.querySelector('#issue-breakdown table tbody');
+            if (issueTable) {
+                const rows = issueTable.querySelectorAll('tr');
+                const labels = [];
+                const data = [];
+                
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        labels.push(cells[0].textContent.trim());
+                        data.push(parseFloat(cells[1].textContent.replace('%', '').trim()));
                     }
                 });
+                
+                if (labels.length > 0 && data.length > 0) {
+                    renderPieChart(labels, data);
+                }
             }
+        }
 
+        function renderReport(data) {
+            exportPdfBtn.disabled = false;
+
+            reportContainer.innerHTML = `
+                <div class="container my-5" id="generated-report-content">
+                    <header class="report-header text-center p-4 rounded mb-5">
+                        <h1>Eli Intelligence Report: ${data.campaign_name}</h1>
+                        <p class="lead"><strong>Client:</strong> Senator [Redacted for Sample] | <strong>Campaign Date:</strong> June 2025 | <strong>Audience:</strong> New York Constituents</p>
+                        <p class="text-white-50">Powered by: Eli Works</p>
+                    </header>
+                    <main>
+                        <section id="engagement-summary" class="mb-5 report-section">
+                            <h3>1. Emoji Engagement Summary</h3>
+                            <div class="card"><div class="card-body">${data.engagement_summary}</div></div>
+                        </section>
+                        <section id="one-big-thing" class="mb-5 report-section">
+                            <h3>2. One Big Thing</h3>
+                            <div class="card"><div class="card-body">${data.one_big_thing}</div></div>
+                        </section>
+                        <section id="issue-breakdown" class="mb-5 report-section">
+                            <h3>3. Issue Selection Breakdown</h3>
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <table class="table">
+                                                <thead><tr><th>Issue</th><th>% of Clicks</th></tr></thead>
+                                                <tbody>
+                                                    ${data.issue_breakdown.map(item => `<tr><td>${item.topic}</td><td>${item.percentage}%</td></tr>`).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <canvas id="issuePieChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <section id="emotional-landscape" class="mb-5 report-section">
+                            <h3>4. Emotional Landscape</h3>
+                            <div class="card"><div class="card-body">${data.emotional_landscape}</div></div>
+                        </section>
+                        <section id="strategic-insights" class="mb-5 report-section">
+                            <h3>5. Strategic Insights for the Senator</h3>
+                            <div class="card"><div class="card-body">${data.strategic_insights}</div></div>
+                        </section>
+                        <section id="social-media" class="mb-5 report-section">
+                            <h3>6. Social Media Messaging</h3>
+                            <div class="card"><div class="card-body">${data.social_media_messaging}</div></div>
+                        </section>
+                        <section id="town-hall" class="mb-5 report-section">
+                            <h3>7. Voter Town Hall Meeting Messaging</h3>
+                            <div class="card"><div class="card-body">${data.town_hall_messaging}</div></div>
+                        </section>
+                        <section id="press-release" class="mb-5 report-section">
+                            <h3>8. Press Release</h3>
+                            <div class="card"><div class="card-body">${data.press_release}</div></div>
+                        </section>
+                        <section id="social-evaluation" class="mb-5 report-section">
+                            <h3>9. Social Posts Evaluation</h3>
+                            <div class="card"><div class="card-body">${data.social_posts_evaluation}</div></div>
+                        </section>
+                    </main>
+                    <div class="text-center mt-4">
+                        <button id="save-report-btn" class="btn btn-success me-2">Save Report</button>
+                        <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+                        <button class="btn btn-secondary" onclick="location.reload()">Back to Submissions</button>
+                    </div>
+                </div>
+            `;
+            
+            renderPieChart(data.issue_labels, data.issue_data);
+            addSaveButtonListener(campaignId, data.campaign_name);
+        }
+
+        function addSaveButtonListener(campaignId, campaignName) {
+            const saveReportBtn = document.getElementById('save-report-btn');
             if (saveReportBtn) {
                 saveReportBtn.addEventListener('click', () => {
-                    const reportContainer = document.getElementById('generated-report');
-                    const reportHtml = reportContainer.innerHTML;
-                    const campaignId = {{ campaign_id }};
-                    const campaignName = "{{ campaign_name }}";
-
+                    const reportHtml = document.getElementById('generated-report-content').innerHTML;
+                    
                     saveReportBtn.disabled = true;
                     saveReportBtn.textContent = 'Saving...';
 
@@ -333,11 +413,15 @@
                     })
                     .then(res => res.json())
                     .then(data => {
-                        alert(data.message);
+                        if (data.status === 'success') {
+                            alert(data.message || 'Report saved successfully!');
+                        } else {
+                            throw new Error(data.message || 'Save failed');
+                        }
                     })
                     .catch(err => {
                         console.error("Save failed:", err);
-                        alert("Error saving report.");
+                        alert("Error saving report: " + err.message);
                     })
                     .finally(() => {
                         saveReportBtn.disabled = false;
@@ -345,10 +429,79 @@
                     });
                 });
             }
-        });
+        }
 
-        document.getElementById('test-api-btn').addEventListener('click', () => {
-            const btn = document.getElementById('test-api-btn');
+        function renderPieChart(labels, data) {
+            const ctx = document.getElementById('issuePieChart');
+            if (!ctx || !labels || !data || labels.length === 0) return;
+            
+            new Chart(ctx.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '% of Clicks',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(201, 203, 207, 0.8)',
+                            'rgba(255, 99, 132, 0.8)'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'right' } }
+                }
+            });
+        }
+
+        function fetchReportData() {
+            loadingOverlay.style.display = 'flex';
+            generateReportBtn.disabled = true;
+            generateReportBtn.textContent = 'Generating...';
+
+            fetch(`/api/generate_report_data/${campaignId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    renderReport(data);
+                })
+                .catch(error => {
+                    console.error("Failed to load report data:", error);
+                    reportContainer.innerHTML = `
+                        <div class="container my-5">
+                            <div class="alert alert-danger text-center">
+                                <h3>Failed to Generate Report</h3>
+                                <p>${error.message}</p>
+                                <p>Please check the console for details or contact support.</p>
+                                <button class="btn btn-secondary" onclick="location.reload()">Back to Submissions</button>
+                            </div>
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    loadingOverlay.style.display = 'none';
+                    generateReportBtn.disabled = false;
+                    generateReportBtn.textContent = 'Generate AI Report';
+                });
+        }
+
+        // Event listeners
+        generateReportBtn.addEventListener('click', fetchReportData);
+
+        testApiBtn.addEventListener('click', () => {
+            const btn = testApiBtn;
             btn.textContent = 'Testing...';
             btn.disabled = true;
 
@@ -356,20 +509,20 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.message);
-                    btn.textContent = 'Test API';
-                    btn.disabled = false;
                 })
                 .catch(error => {
                     alert('An error occurred: ' + error);
+                })
+                .finally(() => {
                     btn.textContent = 'Test API';
                     btn.disabled = false;
                 });
         });
 
-        document.getElementById('export-pdf-btn').addEventListener('click', () => {
-            // This is a placeholder for the PDF export functionality
-            alert('Export to PDF functionality is not yet implemented.');
+        exportPdfBtn.addEventListener('click', () => {
+            window.print();
         });
+    });
     </script>
 </body>
 </html> 

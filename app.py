@@ -180,8 +180,8 @@ def admin_redirect():
 
 @app.route('/report/<int:campaign_id>')
 def report_page(campaign_id):
-    """Renders the report page, showing the sample report by default for a specific campaign."""
-    logging.info(f"Rendering sample report page for campaign {campaign_id}.")
+    """Renders the report page showing submissions by default."""
+    logging.info(f"Rendering report page for campaign {campaign_id} with submissions view.")
     db = sqlite3.connect(DATABASE)
     cursor = db.cursor()
     cursor.execute("SELECT name FROM campaigns WHERE id = ?", (campaign_id,))
@@ -190,15 +190,76 @@ def report_page(campaign_id):
 
     if not campaign_row:
         return "Campaign not found", 404
-
+        
     return render_template(
         'report.html', 
-        sample_view=True,
         campaign_id=campaign_id,
-        campaign_name=campaign_row[0],
-        issue_labels=[],
-        issue_data=[]
+        campaign_name=campaign_row[0]
     )
+
+@app.route('/api/generate_report_data/<int:campaign_id>')
+def api_generate_report_data(campaign_id):
+    """API endpoint to generate and return report data as JSON."""
+    try:
+        # This is the logic from the original 'generate_report' function
+        logging.info(f"Starting API report data generation for campaign ID: {campaign_id}")
+        db = sqlite3.connect(DATABASE)
+        cursor = db.cursor()
+        cursor.execute("SELECT c.name, conv.initial_topic, conv.conversation_json FROM conversations conv JOIN campaigns c ON conv.campaign_id = c.id WHERE conv.campaign_id = ?", (campaign_id,))
+        rows = cursor.fetchall()
+        
+        campaign_name = "Unknown Campaign"
+        if not rows:
+            cursor.execute("SELECT name FROM campaigns WHERE id = ?", (campaign_id,))
+            campaign_row = cursor.fetchone()
+            if campaign_row:
+                campaign_name = campaign_row[0]
+        else:
+            campaign_name = rows[0][0]
+
+        db.close()
+        logging.info(f"Fetched {len(rows)} conversations for campaign {campaign_id} from the database.")
+
+        conversations_text = ""
+        all_topics = [row[1] for row in rows]
+        for i, row in enumerate(rows):
+            conversation = json.loads(row[2])
+            conversations_text += f"Conversation {i+1} (Initial Topic: {row[1]}):\n"
+            for message in conversation:
+                conversations_text += f"- {message['from'].capitalize()}: {message['text']}\n"
+            conversations_text += "---\n"
+
+        report_data = { "campaign_id": campaign_id, "campaign_name": campaign_name }
+
+        report_data['engagement_summary'] = calculate_engagement_summary(rows)
+        issue_breakdown_data = calculate_issue_breakdown(all_topics)
+        report_data['issue_breakdown'] = issue_breakdown_data
+        report_data['issue_labels'] = [item['topic'] for item in issue_breakdown_data]
+        report_data['issue_data'] = [item['percentage'] for item in issue_breakdown_data]
+
+        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL_NAME"))
+        logging.info(f"Using Gemini model: {os.getenv('GEMINI_MODEL_NAME')} for report generation.")
+
+        report_data['one_big_thing'] = generate_ai_section(prompt_for_one_big_thing(conversations_text), model)
+        report_data['emotional_landscape'] = generate_ai_section(prompt_for_emotional_landscape(conversations_text), model)
+        report_data['strategic_insights'] = generate_ai_section(prompt_for_strategic_insights(conversations_text), model)
+        report_data['social_media_messaging'] = generate_ai_section(prompt_for_social_media(report_data['one_big_thing'], issue_breakdown_data), model)
+        report_data['town_hall_messaging'] = generate_ai_section(prompt_for_town_hall(report_data['one_big_thing'], issue_breakdown_data), model)
+        report_data['press_release'] = generate_ai_section(prompt_for_press_release(report_data['one_big_thing'], issue_breakdown_data), model)
+        report_data['social_posts_evaluation'] = generate_ai_section(prompt_for_social_evaluation(report_data['social_media_messaging']), model)
+
+        logging.info("API report data generation successful.")
+        return jsonify(report_data)
+        
+    except Exception as e:
+        logging.error(f"An error occurred during API report generation: {e}", exc_info=DEBUG)
+        return jsonify({"error": "An error occurred during report generation."}), 500
+
+
+@app.route('/report/<int:campaign_id>/generate')
+def generate_report(campaign_id):
+    """This route is now deprecated and will be removed. Redirects for now."""
+    return redirect(url_for('report_page', campaign_id=campaign_id))
 
 # --- Python-based Report Generation ---
 
@@ -318,85 +379,6 @@ def prompt_for_social_evaluation(social_media_text):
     OUTPUT THE HTML-FORMATTED LIST ONLY.
     """
 
-
-@app.route('/report/<int:campaign_id>/generate')
-def generate_report(campaign_id):
-    """Fetches data for a specific campaign, generates report sections, and renders the report."""
-    logging.info(f"Starting new report generation for campaign ID: {campaign_id}")
-    try:
-        db = sqlite3.connect(DATABASE)
-        cursor = db.cursor()
-        cursor.execute("SELECT c.name, conv.initial_topic, conv.conversation_json FROM conversations conv JOIN campaigns c ON conv.campaign_id = c.id WHERE conv.campaign_id = ?", (campaign_id,))
-        rows = cursor.fetchall()
-        
-        # Get campaign name even if there are no conversations
-        campaign_name = "Unknown Campaign"
-        if not rows:
-            cursor.execute("SELECT name FROM campaigns WHERE id = ?", (campaign_id,))
-            campaign_row = cursor.fetchone()
-            if campaign_row:
-                campaign_name = campaign_row[0]
-        else:
-            campaign_name = rows[0][0]
-
-        db.close()
-        logging.info(f"Fetched {len(rows)} conversations for campaign {campaign_id} from the database.")
-    except Exception as e:
-        logging.error(f"Database error while fetching conversations: {e}")
-        return f"Error fetching data from database: {e}", 500
-
-    # --- Data Preparation ---
-    conversations_text = ""
-    all_topics = [row[1] for row in rows]
-    for i, row in enumerate(rows):
-        conversation = json.loads(row[2])
-        conversations_text += f"Conversation {i+1} (Initial Topic: {row[1]}):\n"
-        for message in conversation:
-            conversations_text += f"- {message['from'].capitalize()}: {message['text']}\n"
-        conversations_text += "---\n"
-
-    report_data = { "campaign_id": campaign_id, "campaign_name": campaign_name }
-
-    # --- Section Generation ---
-    # 1. Python-based sections
-    report_data['engagement_summary'] = calculate_engagement_summary(rows)
-    
-    # Calculate issue breakdown for BOTH the pie chart and the HTML table
-    issue_breakdown_data = calculate_issue_breakdown(all_topics)
-    
-    # The 'issue_breakdown' key expects the list of dicts for the AI prompts
-    report_data['issue_breakdown'] = issue_breakdown_data
-
-    # The 'issue_labels' and 'issue_data' are for the Chart.js pie chart
-    report_data['issue_labels'] = [item['topic'] for item in issue_breakdown_data]
-    report_data['issue_data'] = [item['percentage'] for item in issue_breakdown_data]
-
-    # 2. AI-based sections
-    try:
-        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL_NAME"))
-        logging.info(f"Using Gemini model: {os.getenv('GEMINI_MODEL_NAME')} for report generation.")
-
-        # Generate each section with a specific prompt
-        report_data['one_big_thing'] = generate_ai_section(prompt_for_one_big_thing(conversations_text), model)
-        report_data['emotional_landscape'] = generate_ai_section(prompt_for_emotional_landscape(conversations_text), model)
-        report_data['strategic_insights'] = generate_ai_section(prompt_for_strategic_insights(conversations_text), model)
-        
-        # These prompts depend on previous outputs
-        report_data['social_media_messaging'] = generate_ai_section(prompt_for_social_media(report_data['one_big_thing'], issue_breakdown_data), model)
-        report_data['town_hall_messaging'] = generate_ai_section(prompt_for_town_hall(report_data['one_big_thing'], issue_breakdown_data), model)
-        report_data['press_release'] = generate_ai_section(prompt_for_press_release(report_data['one_big_thing'], issue_breakdown_data), model)
-        report_data['social_posts_evaluation'] = generate_ai_section(prompt_for_social_evaluation(report_data['social_media_messaging']), model)
-
-        logging.info("All AI report sections generated successfully.")
-
-    except Exception as e:
-        logging.error(f"An error occurred during AI report generation: {e}", exc_info=DEBUG)
-        # Still return a partial report if some python sections worked
-        return render_template('report.html', **report_data, sample_view=False, error="An AI generation error occurred.")
-
-    logging.info("Full report generated successfully. Rendering template.")
-    return render_template('report.html', **report_data, sample_view=False)
-
 @app.route('/test_api')
 def test_api():
     logging.info("Received request for API test.")
@@ -478,6 +460,52 @@ def list_saved_reports(campaign_id):
 
     reports_data = [{"name": r[0], "url": url_for('static', filename=r[1].replace('static/', '')), "date": r[2]} for r in reports]
     return render_template('saved_reports.html', reports=reports_data, campaign_name=campaign[0], campaign_id=campaign_id)
+
+@app.route('/api/campaigns/<int:campaign_id>/reports')
+def api_list_saved_reports(campaign_id):
+    """API endpoint to get the list of saved reports for a campaign."""
+    db = sqlite3.connect(DATABASE)
+    cursor = db.cursor()
+    cursor.execute("SELECT id, name, created_at FROM reports WHERE campaign_id = ? ORDER BY created_at DESC", (campaign_id,))
+    reports = cursor.fetchall()
+    db.close()
+
+    reports_data = [{
+        "id": r[0], 
+        "name": r[1], 
+        "created_at": r[2]
+    } for r in reports]
+    
+    return jsonify({"reports": reports_data})
+
+@app.route('/api/reports/<int:report_id>')
+def api_load_saved_report(report_id):
+    """API endpoint to load the content of a specific saved report."""
+    db = sqlite3.connect(DATABASE)
+    cursor = db.cursor()
+    cursor.execute("SELECT name, file_path, campaign_id FROM reports WHERE id = ?", (report_id,))
+    report = cursor.fetchone()
+    db.close()
+
+    if not report:
+        return jsonify({"error": "Report not found"}), 404
+
+    report_name, file_path, campaign_id = report
+    
+    try:
+        # Read the saved HTML file
+        full_file_path = os.path.join(app.static_folder, file_path.replace('static/', ''))
+        with open(full_file_path, 'r', encoding='utf-8') as f:
+            report_html = f.read()
+        
+        return jsonify({
+            "name": report_name,
+            "campaign_id": campaign_id,
+            "html_content": report_html
+        })
+    except Exception as e:
+        logging.error(f"Error loading saved report: {e}")
+        return jsonify({"error": "Failed to load report content"}), 500
 
 if __name__ == '__main__':
     init_db()

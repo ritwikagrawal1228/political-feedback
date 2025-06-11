@@ -104,7 +104,7 @@ def get_campaign_data(campaign_id):
     cursor = db.cursor()
     
     # Fetch all conversations for this campaign
-    cursor.execute("SELECT initial_topic, conversation_json FROM conversations WHERE campaign_id = ?", (campaign_id,))
+    cursor.execute("SELECT initial_topic, conversation_json, timestamp FROM conversations WHERE campaign_id = ? ORDER BY timestamp DESC", (campaign_id,))
     rows = cursor.fetchall()
     db.close()
 
@@ -143,8 +143,18 @@ def get_campaign_data(campaign_id):
         "data": engagement_counts
     }
 
+    # 3. Conversations data for the submissions view
+    conversations_data = []
+    for row in rows:
+        conversations_data.append({
+            "initial_topic": row[0],
+            "conversation_json": row[1],
+            "timestamp": row[2]
+        })
+
     return jsonify({
         "pie_chart": pie_chart_data,
         "line_chart": line_chart_data,
-        "total_conversations": total_responses
+        "total_conversations": total_responses,
+        "conversations": conversations_data
     }) 
