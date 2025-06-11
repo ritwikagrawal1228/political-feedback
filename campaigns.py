@@ -56,18 +56,23 @@ def generate_campaign_details_with_ai(theme):
 @campaign_bp.route('/campaigns')
 def dashboard():
     """Displays the main campaign dashboard."""
-    db = sqlite3.connect(DATABASE)
-    cursor = db.cursor()
-    # Fetch all campaigns to display on the dashboard
-    cursor.execute("SELECT id, name, client, main_question FROM campaigns ORDER BY created_at DESC")
-    campaigns = cursor.fetchall()
-    db.close()
-    
-    campaigns_data = [{
-        "id": row[0], "name": row[1], "client": row[2], "main_question": row[3]
-    } for row in campaigns]
+    try:
+        db = sqlite3.connect(DATABASE)
+        cursor = db.cursor()
+        # Fetch all campaigns to display on the dashboard
+        cursor.execute("SELECT id, name, client, main_question FROM campaigns ORDER BY created_at DESC")
+        campaigns = cursor.fetchall()
+        db.close()
+        
+        campaigns_data = [{
+            "id": row[0], "name": row[1], "client": row[2], "main_question": row[3]
+        } for row in campaigns]
 
-    return render_template('dashboard.html', campaigns=campaigns_data)
+        return render_template('dashboard.html', campaigns=campaigns_data)
+    except Exception as e:
+        import logging
+        logging.error(f"Error in dashboard route: {e}")
+        return f"Database error: {str(e)}", 500
 
 @campaign_bp.route('/campaigns/create', methods=['POST'])
 def create_campaign():

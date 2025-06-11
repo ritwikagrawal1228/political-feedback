@@ -15,16 +15,27 @@ load_dotenv()
 # Toggled by DEBUG_MODE in .env file
 DEBUG = os.getenv("DEBUG_MODE", "False").lower() in ("true", "1", "t")
 
-# Basic logging setup
-logging.basicConfig(
-    filename='app.log',
-    level=logging.DEBUG if DEBUG else logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+# Basic logging setup - Use console output for production deployment
+if os.getenv("FLASK_ENV") == "production":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[logging.StreamHandler()]
+    )
+else:
+    logging.basicConfig(
+        filename='app.log',
+        level=logging.DEBUG if DEBUG else logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
 
 # Configure the Gemini API
 try:
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        logging.error("GEMINI_API_KEY environment variable is not set!")
+        raise ValueError("GEMINI_API_KEY is required")
+    genai.configure(api_key=api_key)
     logging.info("Gemini API configured successfully.")
 except Exception as e:
     logging.error(f"Failed to configure Gemini API: {e}")
@@ -507,7 +518,13 @@ def api_load_saved_report(report_id):
         logging.error(f"Error loading saved report: {e}")
         return jsonify({"error": "Failed to load report content"}), 500
 
-if __name__ == '__main__':
+# Initialize the database when the app starts (not just when running directly)
+try:
     init_db()
+    logging.info("Database initialized successfully")
+except Exception as e:
+    logging.error(f"Failed to initialize database: {e}")
+
+if __name__ == '__main__':
     # Use the DEBUG variable for the Flask app as well
     app.run(debug=DEBUG) 
