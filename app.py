@@ -363,10 +363,13 @@ def generate_report(campaign_id):
     
     # Calculate issue breakdown for BOTH the pie chart and the HTML table
     issue_breakdown_data = calculate_issue_breakdown(all_topics)
-    report_data['issue_breakdown'] = issue_breakdown_data['html']
-    # THIS IS THE FIX: Pass the raw data for the Chart.js pie chart
-    report_data['issue_labels'] = issue_breakdown_data['labels']
-    report_data['issue_data'] = issue_breakdown_data['data']
+    
+    # The 'issue_breakdown' key expects the list of dicts for the AI prompts
+    report_data['issue_breakdown'] = issue_breakdown_data
+
+    # The 'issue_labels' and 'issue_data' are for the Chart.js pie chart
+    report_data['issue_labels'] = [item['topic'] for item in issue_breakdown_data]
+    report_data['issue_data'] = [item['percentage'] for item in issue_breakdown_data]
 
     # 2. AI-based sections
     try:
@@ -379,9 +382,9 @@ def generate_report(campaign_id):
         report_data['strategic_insights'] = generate_ai_section(prompt_for_strategic_insights(conversations_text), model)
         
         # These prompts depend on previous outputs
-        report_data['social_media_messaging'] = generate_ai_section(prompt_for_social_media(report_data['one_big_thing'], report_data['issue_breakdown']), model)
-        report_data['town_hall_messaging'] = generate_ai_section(prompt_for_town_hall(report_data['one_big_thing'], report_data['issue_breakdown']), model)
-        report_data['press_release'] = generate_ai_section(prompt_for_press_release(report_data['one_big_thing'], report_data['issue_breakdown']), model)
+        report_data['social_media_messaging'] = generate_ai_section(prompt_for_social_media(report_data['one_big_thing'], issue_breakdown_data), model)
+        report_data['town_hall_messaging'] = generate_ai_section(prompt_for_town_hall(report_data['one_big_thing'], issue_breakdown_data), model)
+        report_data['press_release'] = generate_ai_section(prompt_for_press_release(report_data['one_big_thing'], issue_breakdown_data), model)
         report_data['social_posts_evaluation'] = generate_ai_section(prompt_for_social_evaluation(report_data['social_media_messaging']), model)
 
         logging.info("All AI report sections generated successfully.")
