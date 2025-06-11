@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: eliworks-app
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: FLASK_ENV
+        value: production
+      - key: DEBUG_MODE
+        value: false
+      - key: GEMINI_API_KEY
+        sync: false  # This should be set manually in Render dashboard
+      - key: GEMINI_MODEL_NAME
+        value: gemini-pro
+    healthCheckPath: /campaigns 
