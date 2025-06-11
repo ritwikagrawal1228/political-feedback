@@ -122,11 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.focus();
                 state.current = 'q2_asked';
                 break;
-            case 'q2_answered': // covers both skipped and answered
+            case 'q2_skipped':
+            case 'q2_answered':
                 addMessage('Got it, thanks! Are there other issues of near or equal importance to you right now?', 'eli');
                 addTopicSelection();
                 input.disabled = true;
                 sendButton.disabled = true;
+                input.focus();
                 state.current = 'q3_asked';
                 break;
             case 'q3_answered':
@@ -137,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.focus();
                 state.current = 'q4_asked';
                 break;
-            case 'q4_answered': // covers both skipped and answered
+            case 'q4_skipped':
+            case 'q4_answered':
                 addMessage('Thank you for your feedback!', 'eli');
                 input.disabled = true;
                 sendButton.disabled = true;

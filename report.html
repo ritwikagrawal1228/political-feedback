@@ -210,6 +210,15 @@
         </div>
     </div>
 
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Intelligence Report: {{ campaign_name }}</h2>
+        <div>
+            <button id="save-report-btn" class="btn btn-success me-2">Save Report</button>
+            <button id="test-api-btn" class="btn btn-secondary me-2">Test API</button>
+            <button class="btn btn-primary" onclick="window.print()">Export to PDF</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const reportContent = document.getElementById('report-content');
@@ -219,6 +228,7 @@
         const loadingOverlay = document.getElementById('loading-overlay');
         const sampleReport = document.getElementById('sample-report');
         const generatedReport = document.getElementById('generated-report');
+        const saveReportBtn = document.getElementById('save-report-btn');
 
         const isSampleView = {{ sample_view | tojson }};
 
@@ -299,6 +309,40 @@
                             }
                         }
                     }
+                });
+            }
+
+            if (saveReportBtn) {
+                saveReportBtn.addEventListener('click', () => {
+                    const reportContainer = document.getElementById('generated-report');
+                    const reportHtml = reportContainer.innerHTML;
+                    const campaignId = {{ campaign_id }};
+                    const campaignName = "{{ campaign_name }}";
+
+                    saveReportBtn.disabled = true;
+                    saveReportBtn.textContent = 'Saving...';
+
+                    fetch('/report/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            campaign_id: campaignId,
+                            campaign_name: campaignName,
+                            report_html: reportHtml
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        alert(data.message);
+                    })
+                    .catch(err => {
+                        console.error("Save failed:", err);
+                        alert("Error saving report.");
+                    })
+                    .finally(() => {
+                        saveReportBtn.disabled = false;
+                        saveReportBtn.textContent = 'Save Report';
+                    });
                 });
             }
         });

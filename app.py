@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from collections import Counter
 from campaigns import campaign_bp # Import the new blueprint
+from datetime import datetime
 
 load_dotenv()
 
@@ -59,6 +60,18 @@ def init_db():
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                 initial_topic TEXT NOT NULL,
                 conversation_json TEXT NOT NULL
+            )
+        ''')
+
+        # Create reports table to store saved reports
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                campaign_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (campaign_id) REFERENCES campaigns (id)
             )
         ''')
         db.commit() # Commit table creations
@@ -347,17 +360,18 @@ def generate_report(campaign_id):
     # --- Section Generation ---
     # 1. Python-based sections
     report_data['engagement_summary'] = calculate_engagement_summary(rows)
-    report_data['issue_breakdown'] = calculate_issue_breakdown(all_topics)
     
-    # For the pie chart
-    report_data['issue_labels'] = [item.get('topic', '') for item in report_data['issue_breakdown']]
-    report_data['issue_data'] = [item.get('percentage', 0) for item in report_data['issue_breakdown']]
+    # Calculate issue breakdown for BOTH the pie chart and the HTML table
+    issue_breakdown_data = calculate_issue_breakdown(all_topics)
+    report_data['issue_breakdown'] = issue_breakdown_data['html']
+    # THIS IS THE FIX: Pass the raw data for the Chart.js pie chart
+    report_data['issue_labels'] = issue_breakdown_data['labels']
+    report_data['issue_data'] = issue_breakdown_data['data']
 
     # 2. AI-based sections
     try:
-        model_name = os.getenv("GEMINI_MODEL_NAME")
-        model = genai.GenerativeModel(model_name)
-        logging.info(f"Using Gemini model: {model_name} for report generation.")
+        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL_NAME"))
+        logging.info(f"Using Gemini model: {os.getenv('GEMINI_MODEL_NAME')} for report generation.")
 
         # Generate each section with a specific prompt
         report_data['one_big_thing'] = generate_ai_section(prompt_for_one_big_thing(conversations_text), model)
@@ -400,6 +414,67 @@ def test_api():
     except Exception as e:
         logging.error(f"API test failed: {e}", exc_info=DEBUG)
         return jsonify({"message": f"API Test Failed: {e}"}), 500
+
+@app.route('/report/save', methods=['POST'])
+def save_report():
+    """Saves a generated report's HTML to a file and database."""
+    data = request.json
+    campaign_id = data.get('campaign_id')
+    report_html = data.get('report_html')
+    campaign_name = data.get('campaign_name', 'Report')
+
+    if not all([campaign_id, report_html]):
+        return jsonify({"status": "error", "message": "Missing required data."}), 400
+
+    # Create a reports directory if it doesn't exist
+    reports_dir = os.path.join(app.static_folder, 'reports')
+    os.makedirs(reports_dir, exist_ok=True)
+
+    # Generate a unique filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_campaign_name = "".join(c for c in campaign_name if c.isalnum() or c in (' ', '_')).rstrip()
+    report_name = f"{safe_campaign_name}_{timestamp}"
+    file_name = f"{report_name}.html"
+    file_path = os.path.join(reports_dir, file_name)
+    
+    # In a real app, you'd save this relative to the static folder for serving
+    db_path = f"static/reports/{file_name}"
+
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(report_html)
+        
+        db = sqlite3.connect(DATABASE)
+        cursor = db.cursor()
+        cursor.execute(
+            "INSERT INTO reports (campaign_id, name, file_path) VALUES (?, ?, ?)",
+            (campaign_id, report_name, db_path)
+        )
+        db.commit()
+        db.close()
+        
+        logging.info(f"Successfully saved report: {file_name}")
+        return jsonify({"status": "success", "message": f"Report '{report_name}' saved successfully!"})
+    except Exception as e:
+        logging.error(f"Error saving report: {e}")
+        return jsonify({"status": "error", "message": "Failed to save report."}), 500
+
+@app.route('/campaigns/<int:campaign_id>/reports')
+def list_saved_reports(campaign_id):
+    """Displays a list of saved reports for a specific campaign."""
+    db = sqlite3.connect(DATABASE)
+    cursor = db.cursor()
+    cursor.execute("SELECT name FROM campaigns WHERE id = ?", (campaign_id,))
+    campaign = cursor.fetchone()
+    cursor.execute("SELECT name, file_path, created_at FROM reports WHERE campaign_id = ? ORDER BY created_at DESC", (campaign_id,))
+    reports = cursor.fetchall()
+    db.close()
+
+    if not campaign:
+        return "Campaign not found", 404
+
+    reports_data = [{"name": r[0], "url": url_for('static', filename=r[1].replace('static/', '')), "date": r[2]} for r in reports]
+    return render_template('saved_reports.html', reports=reports_data, campaign_name=campaign[0], campaign_id=campaign_id)
 
 if __name__ == '__main__':
     init_db()
