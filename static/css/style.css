@@ -1,0 +1,212 @@
+body {
+    background-color: #fdf5f2;
+}
+
+.logo {
+    max-width: 150px;
+    margin-bottom: 2rem;
+}
+
+#initial-screen .icon {
+    width: 100px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+#initial-screen .icon:hover {
+    transform: scale(1.1);
+}
+
+#initial-screen .icon-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#initial-screen .icon {
+    font-size: 4rem;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ddd;
+}
+
+/* New Topic Card styles */
+.topic-card {
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 15px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.topic-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.topic-card:active {
+    transform: translateY(-2px) scale(0.98);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
+
+.topic-card .icon {
+    border: none;
+    background-color: transparent;
+}
+
+/* Chat Screen Styles */
+.chat-container {
+    max-width: 600px;
+    margin: 0 auto;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+    height: 70vh;
+}
+
+.chat-header {
+    background-color: #007bff;
+    color: white;
+    padding: 15px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    text-align: center;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    padding: 10px 15px;
+    border-radius: 20px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+.eli-message {
+    background-color: #f1f0f0;
+    align-self: flex-start;
+    text-align: left;
+}
+
+.user-message {
+    background-color: #007bff;
+    color: white;
+    align-self: flex-end;
+    text-align: left;
+}
+
+.chat-input {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #ddd;
+}
+
+.chat-input input {
+    flex-grow: 1;
+    border-radius: 20px 0 0 20px;
+    border-right: 0;
+}
+
+.chat-input button {
+    border-radius: 0;
+    border-left: 0;
+}
+
+.chat-input button.btn-primary {
+    border-radius: 0 20px 20px 0;
+}
+
+/* Styles for follow-up icons in chat */
+.follow-up-icons-container .icon-wrapper-small .icon {
+    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.follow-up-icons-container .icon-wrapper-small p {
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.follow-up-icons-container .row {
+    padding: 10px 0;
+    flex-wrap: wrap;
+    justify-content: center !important;
+}
+
+.follow-up-icons-container {
+    max-width: 100%;
+}
+
+/* Callout notification style */
+.chat-callout {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background-color: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    z-index: 1050;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.chat-callout.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.question-card {
+    border: none;
+    background-color: #f8f9fa;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.topic-grid-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1.5rem;
+}
+
+.emoji-icon {
+    font-size: 3.5rem;
+    line-height: 1;
+}
+
+.topic-name {
+    margin-top: 1rem;
+    font-weight: 500;
+    color: #495057;
+} 

@@ -1,0 +1,16 @@
+# Environment
+.env
+env/
+venv/
+__pycache__/
+
+# Database
+database.db
+*.sqlite3
+
+# Logs
+*.log
+
+# IDE / Editor specific
+.vscode/
+.idea/ 

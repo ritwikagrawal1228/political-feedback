@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eli Intelligence Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Loading Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay" style="display: none;">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <span class="ms-3">Generating Report... Please wait.</span>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Eli Intelligence Report</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/report/{{ campaign_id }}/generate" id="generate-report-btn">Generate New Report</a>
+                    </li>
+                     <li class="nav-item">
+                        <button class="nav-link btn btn-link" id="view-sample-btn">View Sample Report</button>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Report Sections
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="#engagement-summary">1. Emoji Engagement Summary</a></li>
+                            <li><a class="dropdown-item" href="#one-big-thing">2. One Big Thing</a></li>
+                            <li><a class="dropdown-item" href="#issue-breakdown">3. Issue Selection Breakdown</a></li>
+                            <li><a class="dropdown-item" href="#emotional-landscape">4. Emotional Landscape</a></li>
+                            <li><a class="dropdown-item" href="#strategic-insights">5. Strategic Insights</a></li>
+                            <li><a class="dropdown-item" href="#social-media">6. Social Media Messaging</a></li>
+                            <li><a class="dropdown-item" href="#town-hall">7. Voter Town Hall Messaging</a></li>
+                            <li><a class="dropdown-item" href="#press-release">8. Press Release</a></li>
+                            <li><a class="dropdown-item" href="#social-evaluation">9. Social Posts Evaluation</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <button class="btn btn-secondary me-2" id="test-api-btn">Test API</button>
+                <button class="btn btn-outline-light" id="export-pdf-btn">Export to PDF</button>
+            </div>
+        </div>
+    </nav>
+
+    <div id="report-content" {% if sample_view %}style="display: none;"{% endif %}>
+        <div class="container my-5">
+            <header class="report-header text-center p-4 rounded mb-5">
+                <h1>Eli Intelligence Report: New York State Issue Pulse</h1>
+                <p class="lead"><strong>Client:</strong> Senator [Redacted for Sample] | <strong>Campaign Date:</strong> June 2025 | <strong>Audience:</strong> New York Constituents</p>
+                <p class="text-white-50">Powered by: Eli Works</p>
+            </header>
+
+            <main>
+                <section id="engagement-summary" class="mb-5 report-section">
+                    <h3>1. Emoji Engagement Summary</h3>
+                    <div class="card"><div class="card-body">
+                        <p>{{ engagement_summary | default('AI analysis will appear here.', true) | safe }}</p>
+                    </div></div>
+                </section>
+                
+                <section id="one-big-thing" class="mb-5 report-section">
+                    <h3>2. One Big Thing</h3>
+                    <div class="card"><div class="card-body">
+                        <p>{{ one_big_thing | default('AI analysis will appear here.', true) | safe }}</p>
+                    </div></div>
+                </section>
+
+                <section id="issue-breakdown" class="mb-5 report-section">
+                    <h3>3. Issue Selection Breakdown</h3>
+                    <div class="card"><div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <table class="table">
+                                    <thead><tr><th>Issue</th><th>% of Clicks</th></tr></thead>
+                                    <tbody>
+                                        {% if issue_breakdown %}
+                                            {% for item in issue_breakdown %}
+                                            <tr><td>{{ item.topic }}</td><td>{{ item.percentage }}%</td></tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr><td colspan="2">No data available.</td></tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-4">
+                                <canvas id="issuePieChart"></canvas>
+                            </div>
+                        </div>
+                    </div></div>
+                </section>
+
+                <section id="emotional-landscape" class="mb-5 report-section">
+                    <h3>4. Emotional Landscape</h3>
+                    <div class="card"><div class="card-body">
+                        <p>{{ emotional_landscape | default('AI analysis will appear here.', true) | safe }}</p>
+                    </div></div>
+                </section>
+
+                <section id="strategic-insights" class="mb-5 report-section">
+                    <h3>5. Strategic Insights for the Senator</h3>
+                    <div class="card"><div class="card-body">
+                        <p>{{ strategic_insights | default('AI analysis will appear here.', true) | safe }}</p>
+                    </div></div>
+                </section>
+                
+                <section id="social-media" class="mb-5 report-section">
+                    <h3>6. Social Media Messaging</h3>
+                    <div class="card"><div class="card-body">
+                        {{ social_media_messaging | default('AI analysis will appear here.', true) | safe }}
+                    </div></div>
+                </section>
+
+                <section id="town-hall" class="mb-5 report-section">
+                    <h3>7. Voter Town Hall Meeting Messaging</h3>
+                    <div class="card"><div class="card-body">
+                        {{ town_hall_messaging | default('AI analysis will appear here.', true) | safe }}
+                    </div></div>
+                </section>
+                
+                <section id="press-release" class="mb-5 report-section">
+                    <h3>8. Press Release</h3>
+                    <div class="card"><div class="card-body">
+                        {{ press_release | default('AI analysis will appear here.', true) | safe }}
+                    </div></div>
+                </section>
+                
+                <section id="social-evaluation" class="mb-5 report-section">
+                    <h3>9. Social Posts Evaluation</h3>
+                    <div class="card"><div class="card-body">
+                       {{ social_posts_evaluation | default('AI analysis will appear here.', true) | safe }}
+                    </div></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div id="sample-report-content" {% if not sample_view %}style="display: none;"{% endif %}>
+        <div class="container my-5">
+             <header class="report-header text-center p-4 rounded mb-5">
+                <h1>SAMPLE REPORT: Eli Intelligence Report</h1>
+                <p class="lead">This is a sample report demonstrating the structure and type of analysis provided.</p>
+            </header>
+            <main>
+                <section class="mb-5 report-section">
+                    <h3>1. Emoji Engagement Summary</h3>
+                    <div class="card"><div class="card-body"><p>Sample engagement summary text. Analysis of user emoji choices would appear here.</p></div></div>
+                </section>
+                <section class="mb-5 report-section">
+                    <h3>2. One Big Thing</h3>
+                    <div class="card"><div class="card-body"><p>This section highlights the single most important insight from the collected data. For example: "The primary concern for constituents is the rising cost of living."</p></div></div>
+                </section>
+                <section class="mb-5 report-section">
+                    <h3>3. Issue Selection Breakdown</h3>
+                     <div class="card"><div class="card-body"><p>A chart and table would show the distribution of selected topics, e.g., 45% Economy, 25% Healthcare, etc.</p></div></div>
+                </section>
+                 <section class="mb-5 report-section">
+                    <h3>4. Emotional Landscape</h3>
+                    <div class="card"><div class="card-body"><p>Analysis of the emotions expressed in user feedback. E.g., "A sentiment of anxiety was prevalent in discussions about the economy."</p></div></div>
+                </section>
+                <section class="mb-5 report-section">
+                    <h3>5. Strategic Insights for the Senator</h3>
+                    <div class="card"><div class="card-body"><p>Actionable advice based on the data. E.g., "Recommend focusing Q3 campaign messaging on the new jobs bill."</p></div></div>
+                </section>
+                <section class="mb-5 report-section">
+                    <h3>6. Social Media Messaging</h3>
+                    <div class="card"><div class="card-body"><p>Sample social media posts derived from the analysis would be here.</p></div></div>
+                </section>
+                 <section class="mb-5 report-section">
+                    <h3>7. Voter Town Hall Meeting Messaging</h3>
+                    <div class="card"><div class="card-body"><p>Key talking points for town hall meetings based on constituent feedback.</p></div></div>
+                </section>
+                <section class="mb-5 report-section">
+                    <h3>8. Press Release</h3>
+                    <div class="card"><div class="card-body"><p>A draft press release addressing the key issues identified.</p></div></div>
+                </section>
+                <section class="mb-5 report-section">
+                    <h3>9. Social Posts Evaluation</h3>
+                    <div class="card"><div class="card-body"><p>Evaluation of hypothetical social media posts based on the data analysis.</p></div></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const reportContent = document.getElementById('report-content');
+        const sampleReportContent = document.getElementById('sample-report-content');
+        const viewSampleBtn = document.getElementById('view-sample-btn');
+        const generateReportBtn = document.getElementById('generate-report-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const sampleReport = document.getElementById('sample-report');
+        const generatedReport = document.getElementById('generated-report');
+
+        const isSampleView = {{ sample_view | tojson }};
+
+        function showSampleReport() {
+            reportContent.style.display = 'none';
+            sampleReportContent.style.display = 'block';
+            viewSampleBtn.classList.add('active');
+            generateReportBtn.classList.remove('active');
+        }
+
+        function showGeneratedReport() {
+            reportContent.style.display = 'block';
+            sampleReportContent.style.display = 'none';
+            viewSampleBtn.classList.remove('active');
+            generateReportBtn.classList.add('active');
+        }
+
+        viewSampleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSampleReport();
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const generateBtn = document.getElementById('generate-report-btn');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const sampleReport = document.getElementById('sample-report');
+            const generatedReport = document.getElementById('generated-report');
+            const viewSampleBtn = document.getElementById('view-sample-btn');
+
+            if (generateBtn) {
+                generateBtn.addEventListener('click', function (e) {
+                    // Show overlay and let the link navigation proceed.
+                    // The overlay will disappear when the new page loads.
+                    loadingOverlay.style.display = 'flex';
+                });
+            }
+            
+            if (isSampleView) {
+                sampleReport.style.display = 'block';
+                generatedReport.style.display = 'none';
+            } else {
+                sampleReport.style.display = 'none';
+                generatedReport.style.display = 'block';
+            }
+            
+            viewSampleBtn.addEventListener('click', () => {
+                sampleReport.style.display = 'block';
+                generatedReport.style.display = 'none';
+            });
+
+            const ctx = document.getElementById('issuePieChart').getContext('2d');
+            const issueLabels = {{ issue_labels | tojson }};
+            const issueData = {{ issue_data | tojson }};
+
+            if (issueLabels && issueData && issueLabels.length > 0) {
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: issueLabels,
+                        datasets: [{
+                            label: '% of Clicks',
+                            data: issueData,
+                            backgroundColor: [
+                                'rgba(54, 162, 235, 0.8)',
+                                'rgba(75, 192, 192, 0.8)',
+                                'rgba(255, 206, 86, 0.8)',
+                                'rgba(201, 203, 207, 0.8)',
+                                'rgba(255, 99, 132, 0.8)'
+                            ],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        document.getElementById('test-api-btn').addEventListener('click', () => {
+            const btn = document.getElementById('test-api-btn');
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+
+            fetch('/test_api')
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    btn.textContent = 'Test API';
+                    btn.disabled = false;
+                })
+                .catch(error => {
+                    alert('An error occurred: ' + error);
+                    btn.textContent = 'Test API';
+                    btn.disabled = false;
+                });
+        });
+
+        document.getElementById('export-pdf-btn').addEventListener('click', () => {
+            // This is a placeholder for the PDF export functionality
+            alert('Export to PDF functionality is not yet implemented.');
+        });
+    </script>
+</body>
+</html> 
